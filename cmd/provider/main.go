@@ -19,6 +19,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -52,6 +53,7 @@ func main() {
 		enableManagementPolicies = app.Flag("enable-management-policies", "Enable/disable support for Management Policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
 		pollStateMetricInterval  = app.Flag("poll-state-metric", "State metric recording interval.").Default("5s").Duration()
 		metricsBindAddress       = app.Flag("metrics-bind-address", "The address the metrics endpoint binds to.").Default(":8080").String()
+		flavours                 = app.Flag("flavours", "Comma-separated SQL flavours whose controllers to run (mysql,postgresql,mssql,singlestore). Set to 'singlestore' to run a singlestore-only provider alongside the upstream provider-sql.").Default("mysql,postgresql,mssql,singlestore").Envar("FLAVOURS").String()
 	)
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -103,6 +105,8 @@ func main() {
 		log.Info("Beta feature enabled", "flag", feature.EnableBetaManagementPolicies)
 	}
 
-	kingpin.FatalIfError(controller.Setup(mgr, o), "Cannot setup SQL controllers")
+	selected := strings.Split(strings.ReplaceAll(*flavours, " ", ""), ",")
+	log.Info("Enabling SQL flavours", "flavours", selected)
+	kingpin.FatalIfError(controller.SetupSelected(mgr, o, selected), "Cannot setup SQL controllers")
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }

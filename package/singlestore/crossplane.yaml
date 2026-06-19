@@ -1,0 +1,28 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-singlestore
+  annotations:
+    descriptionShort: |
+      Crossplane provider for SingleStore users, grants and JWT auth.
+    meta.crossplane.io/maintainer: Tixly SRE <sre@tixly.com>
+    meta.crossplane.io/source: github.com/Tix-Ticketing/provider-sql
+    meta.crossplane.io/license: Apache-2.0
+    meta.crossplane.io/description: |
+      A trimmed build of provider-sql that ships ONLY the
+      singlestore.sql.crossplane.io API group (ProviderConfig, User, Grant).
+      It runs alongside the upstream crossplane-contrib/provider-sql (which keeps
+      ownership of the mysql/postgresql/mssql groups) without any CRD overlap.
+      The controller binary is the same image; it is started with
+      FLAVOURS=singlestore (set via DeploymentRuntimeConfig) so only the
+      SingleStore controllers are active.
+    meta.crossplane.io/readme: |
+      Fork of crossplane-contrib/provider-sql adding a SingleStore flavour.
+      Focus: user creation, grants, and JWT (IDENTIFIED WITH authentication_jwt)
+      authentication. SingleStore speaks the MySQL wire protocol; this package
+      reuses the MySQL client but exposes its own singlestore.sql.crossplane.io
+      kinds so it can be installed in parallel with the maintained provider-sql.
+    friendly-name.meta.crossplane.io: Provider SingleStore
+    friendly-group-name.meta.crossplane.io/singlestore.sql.crossplane.io: SingleStore
+    friendly-kind-name.meta.crossplane.io/user.singlestore.sql.crossplane.io: User
+    friendly-kind-name.meta.crossplane.io/grant.singlestore.sql.crossplane.io: Grant

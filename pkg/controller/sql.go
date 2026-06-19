@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -24,24 +25,45 @@ import (
 	clustermssql "github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/mssql"
 	clustermysql "github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/mysql"
 	clusterpostgresql "github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/postgresql"
+	clustersinglestore "github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore"
 	namespacedmssql "github.com/crossplane-contrib/provider-sql/pkg/controller/namespaced/mssql"
 	namespacedmysql "github.com/crossplane-contrib/provider-sql/pkg/controller/namespaced/mysql"
 	namespacedpostgresql "github.com/crossplane-contrib/provider-sql/pkg/controller/namespaced/postgresql"
 )
 
-// Setup creates all controllers with the supplied logger and adds
-// them to the supplied manager.
+// flavours maps a flavour name to the controller setup functions it owns.
+// Gating by flavour lets us ship a singlestore-only package that runs alongside
+// the upstream provider-sql without both establishing the same CRDs.
+var flavours = map[string][]func(ctrl.Manager, controller.Options) error{
+	"mysql":       {clustermysql.Setup, namespacedmysql.Setup},
+	"postgresql":  {clusterpostgresql.Setup, namespacedpostgresql.Setup},
+	"mssql":       {clustermssql.Setup, namespacedmssql.Setup},
+	"singlestore": {clustersinglestore.Setup},
+}
+
+// AllFlavours returns every known flavour name.
+func AllFlavours() []string {
+	return []string{"mysql", "postgresql", "mssql", "singlestore"}
+}
+
+// Setup creates controllers for every flavour. Retained for callers that want
+// the full provider.
 func Setup(mgr ctrl.Manager, l controller.Options) error {
-	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		clustermssql.Setup,
-		clustermysql.Setup,
-		clusterpostgresql.Setup,
-		namespacedmssql.Setup,
-		namespacedmysql.Setup,
-		namespacedpostgresql.Setup,
-	} {
-		if err := setup(mgr, l); err != nil {
-			return err
+	return SetupSelected(mgr, l, AllFlavours())
+}
+
+// SetupSelected creates controllers only for the named flavours. An unknown
+// flavour is a hard error so a typo can't silently disable a controller.
+func SetupSelected(mgr ctrl.Manager, l controller.Options, names []string) error {
+	for _, name := range names {
+		setups, ok := flavours[name]
+		if !ok {
+			return errors.Errorf("unknown sql flavour %q (known: mysql, postgresql, mssql, singlestore)", name)
+		}
+		for _, setup := range setups {
+			if err := setup(mgr, l); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
