@@ -1,0 +1,21 @@
+# A role bundles privileges. Roles are attached to Groups (not users directly);
+# users inherit a role's privileges by belonging to a group it is granted to.
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: app-ruleengine-ro
+  annotations:
+    crossplane.io/external-name: app_ruleengine_ro
+spec:
+  forProvider:
+    privileges:
+      - database: warehouse_euw_acme
+        privileges:
+          - SELECT
+      - database: warehouse_euw_acme
+        table: events
+        privileges:
+          - SELECT
+          - INSERT
+  providerConfigRef:
+    name: sql-singlestore-prod-euw

@@ -39,3 +39,47 @@ func (mg *Grant) ResolveReferences(ctx context.Context, c client.Reader) error {
 
 	return nil
 }
+
+// ResolveReferences of this Group.
+func (mg *Group) ResolveReferences(ctx context.Context, c client.Reader) error {
+	r := reference.NewAPIResolver(c, mg)
+
+	var mrsp reference.MultiResolutionResponse
+	var err error
+
+	mrsp, err = r.ResolveMultiple(ctx, reference.MultiResolutionRequest{
+		CurrentValues: mg.Spec.ForProvider.Roles,
+		Extract:       reference.ExternalName(),
+		Namespace:     mg.GetNamespace(),
+		References:    mg.Spec.ForProvider.RolesRefs,
+		Selector:      mg.Spec.ForProvider.RolesSelector,
+		To: reference.To{
+			List:    &RoleList{},
+			Managed: &Role{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.Roles")
+	}
+	mg.Spec.ForProvider.Roles = mrsp.ResolvedValues
+	mg.Spec.ForProvider.RolesRefs = mrsp.ResolvedReferences
+
+	mrsp, err = r.ResolveMultiple(ctx, reference.MultiResolutionRequest{
+		CurrentValues: mg.Spec.ForProvider.Users,
+		Extract:       reference.ExternalName(),
+		Namespace:     mg.GetNamespace(),
+		References:    mg.Spec.ForProvider.UsersRefs,
+		Selector:      mg.Spec.ForProvider.UsersSelector,
+		To: reference.To{
+			List:    &UserList{},
+			Managed: &User{},
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "mg.Spec.ForProvider.Users")
+	}
+	mg.Spec.ForProvider.Users = mrsp.ResolvedValues
+	mg.Spec.ForProvider.UsersRefs = mrsp.ResolvedReferences
+
+	return nil
+}

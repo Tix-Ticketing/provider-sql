@@ -1,0 +1,20 @@
+# A group is the join point of SingleStore RBAC: roles are granted to the group
+# and users are made members. Members inherit the union of the attached roles'
+# privileges. This is the only way to attach a role to a user (GRANT ROLE TO a
+# user directly is rejected — roles attach to groups).
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: Group
+metadata:
+  name: grp-ruleengine
+  annotations:
+    crossplane.io/external-name: grp_ruleengine
+spec:
+  forProvider:
+    # Attach roles by name, or via roleRefs/roleSelector to Role objects.
+    roleRefs:
+      - name: app-ruleengine-ro
+    # Members by bare username (no @host), or via userRefs/userSelector.
+    userRefs:
+      - name: example-jwt-user
+  providerConfigRef:
+    name: sql-singlestore-prod-euw
