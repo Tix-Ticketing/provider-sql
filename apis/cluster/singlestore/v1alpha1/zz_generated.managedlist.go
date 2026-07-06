@@ -17,8 +17,8 @@ func (l *GrantList) GetItems() []resource.Managed {
 	return items
 }
 
-// GetItems of this GroupList.
-func (l *GroupList) GetItems() []resource.Managed {
+// GetItems of this RBACGroupList.
+func (l *RBACGroupList) GetItems() []resource.Managed {
 	items := make([]resource.Managed, len(l.Items))
 	for i := range l.Items {
 		items[i] = &l.Items[i]

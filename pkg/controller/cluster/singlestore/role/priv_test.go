@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/internal"
 )
 
 // Lines verified against a live SingleStore v8 instance:
@@ -89,7 +91,7 @@ func TestPrivilegesEqualAndDiff(t *testing.T) {
 		t.Fatal("expected not equal")
 	}
 	scope := scopeKey{db: "`dby`", table: "*"}
-	toGrant, toRevoke := diffSet(desired[scope], observed[scope])
+	toGrant, toRevoke := internal.StringSetDiff(desired[scope], observed[scope])
 	sort.Strings(toGrant)
 	sort.Strings(toRevoke)
 	if diff := cmp.Diff([]string{"INSERT"}, toGrant); diff != "" {

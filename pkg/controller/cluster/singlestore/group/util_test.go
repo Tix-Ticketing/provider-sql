@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/internal"
 )
 
 func TestBareUsername(t *testing.T) {
@@ -40,9 +42,9 @@ func TestBareUsername(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
-	desired := set([]string{"a", "b", "c"})
-	observed := set([]string{"b", "c", "d"})
-	toAdd, toRemove := diff(desired, observed)
+	desired := internal.StringSet([]string{"a", "b", "c"})
+	observed := internal.StringSet([]string{"b", "c", "d"})
+	toAdd, toRemove := internal.StringSetDiff(desired, observed)
 	if diff := cmp.Diff([]string{"a"}, toAdd); diff != "" {
 		t.Errorf("toAdd -want +got:\n%s", diff)
 	}

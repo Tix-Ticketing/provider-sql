@@ -20,7 +20,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/pkg/errors"
@@ -41,6 +40,7 @@ import (
 	"github.com/crossplane-contrib/provider-sql/apis/cluster/singlestore/v1alpha1"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/mysql"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/xsql"
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/internal"
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/tls"
 )
 
@@ -66,12 +66,11 @@ const (
 
 // Setup adds a controller that reconciles Group managed resources.
 func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
-	name := managed.ControllerName(v1alpha1.SingleStoreGroupGroupKind)
+	name := managed.ControllerName(v1alpha1.RBACGroupGroupKind)
 	t := resource.NewLegacyProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{})
 
 	reconcilerOptions := []managed.ReconcilerOption{
 		managed.WithTypedExternalConnector(&connector{kube: mgr.GetClient(), track: t.Track, newDB: mysql.New}),
-		managed.WithReferenceResolver(managed.NewAPISimpleReferenceResolver(mgr.GetClient())),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
@@ -80,18 +79,18 @@ func Setup(mgr ctrl.Manager, o xpcontroller.Options) error {
 		reconcilerOptions = append(reconcilerOptions, managed.WithManagementPolicies())
 	}
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.SingleStoreGroupGroupVersionKind),
+		resource.ManagedKind(v1alpha1.RBACGroupGroupVersionKind),
 		reconcilerOptions...,
 	)
 	if err := mgr.Add(statemetrics.NewMRStateRecorder(
 		mgr.GetClient(), o.Logger, o.MetricOptions.MRStateMetrics,
-		&v1alpha1.GroupList{}, o.MetricOptions.PollStateMetricInterval,
+		&v1alpha1.RBACGroupList{}, o.MetricOptions.PollStateMetricInterval,
 	)); err != nil {
 		return err
 	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		For(&v1alpha1.Group{}).
+		For(&v1alpha1.RBACGroup{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: maxConcurrency}).
 		Complete(r)
 }
@@ -102,9 +101,9 @@ type connector struct {
 	newDB func(creds map[string][]byte, tls *string, binlog *bool) xsql.DB
 }
 
-var _ managed.TypedExternalConnector[*v1alpha1.Group] = &connector{}
+var _ managed.TypedExternalConnector[*v1alpha1.RBACGroup] = &connector{}
 
-func (c *connector) Connect(ctx context.Context, mg *v1alpha1.Group) (managed.TypedExternalClient[*v1alpha1.Group], error) {
+func (c *connector) Connect(ctx context.Context, mg *v1alpha1.RBACGroup) (managed.TypedExternalClient[*v1alpha1.RBACGroup], error) {
 	if err := c.track(ctx, mg); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
@@ -131,9 +130,9 @@ func (c *connector) Connect(ctx context.Context, mg *v1alpha1.Group) (managed.Ty
 
 type external struct{ db xsql.DB }
 
-var _ managed.TypedExternalClient[*v1alpha1.Group] = &external{}
+var _ managed.TypedExternalClient[*v1alpha1.RBACGroup] = &external{}
 
-func (c *external) Observe(ctx context.Context, mg *v1alpha1.Group) (managed.ExternalObservation, error) {
+func (c *external) Observe(ctx context.Context, mg *v1alpha1.RBACGroup) (managed.ExternalObservation, error) {
 	grp := meta.GetExternalName(mg)
 
 	roles, exists, err := c.observedRoles(ctx, grp)
@@ -148,11 +147,11 @@ func (c *external) Observe(ctx context.Context, mg *v1alpha1.Group) (managed.Ext
 		return managed.ExternalObservation{}, err
 	}
 
-	mg.Status.AtProvider.Roles = sortedKeys(roles)
-	mg.Status.AtProvider.Users = sortedKeys(users)
+	mg.Status.AtProvider.Roles = internal.SortedKeys(roles)
+	mg.Status.AtProvider.Users = internal.SortedKeys(users)
 
-	rGrant, rRevoke := diff(set(mg.Spec.ForProvider.Roles), roles)
-	uGrant, uRevoke := diff(set(mg.Spec.ForProvider.Users), users)
+	rGrant, rRevoke := internal.StringSetDiff(internal.StringSet(mg.Spec.ForProvider.Roles), roles)
+	uGrant, uRevoke := internal.StringSetDiff(internal.StringSet(mg.Spec.ForProvider.Users), users)
 
 	mg.SetConditions(xpv1.Available())
 	return managed.ExternalObservation{
@@ -161,20 +160,20 @@ func (c *external) Observe(ctx context.Context, mg *v1alpha1.Group) (managed.Ext
 	}, nil
 }
 
-func (c *external) Create(ctx context.Context, mg *v1alpha1.Group) (managed.ExternalCreation, error) {
+func (c *external) Create(ctx context.Context, mg *v1alpha1.RBACGroup) (managed.ExternalCreation, error) {
 	mg.SetConditions(xpv1.Creating())
 	grp := meta.GetExternalName(mg)
 	q := fmt.Sprintf("CREATE GROUP %s", mysql.QuoteValue(grp))
 	if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: q, ErrorValue: errCreateGroup}); err != nil {
 		return managed.ExternalCreation{}, err
 	}
-	if err := c.reconcileEdges(ctx, grp, set(mg.Spec.ForProvider.Roles), set(mg.Spec.ForProvider.Users), nil, nil); err != nil {
+	if err := c.reconcileEdges(ctx, grp, internal.StringSet(mg.Spec.ForProvider.Roles), internal.StringSet(mg.Spec.ForProvider.Users), nil, nil); err != nil {
 		return managed.ExternalCreation{}, err
 	}
 	return managed.ExternalCreation{}, nil
 }
 
-func (c *external) Update(ctx context.Context, mg *v1alpha1.Group) (managed.ExternalUpdate, error) {
+func (c *external) Update(ctx context.Context, mg *v1alpha1.RBACGroup) (managed.ExternalUpdate, error) {
 	grp := meta.GetExternalName(mg)
 	roles, _, err := c.observedRoles(ctx, grp)
 	if err != nil {
@@ -184,13 +183,13 @@ func (c *external) Update(ctx context.Context, mg *v1alpha1.Group) (managed.Exte
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
-	if err := c.reconcileEdges(ctx, grp, set(mg.Spec.ForProvider.Roles), set(mg.Spec.ForProvider.Users), roles, users); err != nil {
+	if err := c.reconcileEdges(ctx, grp, internal.StringSet(mg.Spec.ForProvider.Roles), internal.StringSet(mg.Spec.ForProvider.Users), roles, users); err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 	return managed.ExternalUpdate{}, nil
 }
 
-func (c *external) Delete(ctx context.Context, mg *v1alpha1.Group) (managed.ExternalDelete, error) {
+func (c *external) Delete(ctx context.Context, mg *v1alpha1.RBACGroup) (managed.ExternalDelete, error) {
 	mg.SetConditions(xpv1.Deleting())
 	grp := meta.GetExternalName(mg)
 	// DROP GROUP automatically removes its role attachments and memberships.
@@ -206,7 +205,7 @@ func (c *external) Disconnect(ctx context.Context) error { return nil }
 // reconcileEdges grants/revokes role attachments and user memberships to match
 // the desired sets. Observed sets may be nil (treated as empty), e.g. on Create.
 func (c *external) reconcileEdges(ctx context.Context, grp string, desiredRoles, desiredUsers, observedRoles, observedUsers map[string]struct{}) error {
-	rGrant, rRevoke := diff(desiredRoles, observedRoles)
+	rGrant, rRevoke := internal.StringSetDiff(desiredRoles, observedRoles)
 	for _, role := range rRevoke {
 		q := fmt.Sprintf("REVOKE ROLE %s FROM %s", mysql.QuoteValue(role), mysql.QuoteValue(grp))
 		if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: q, ErrorValue: errDetachRole}); err != nil {
@@ -220,7 +219,7 @@ func (c *external) reconcileEdges(ctx context.Context, grp string, desiredRoles,
 		}
 	}
 
-	uGrant, uRevoke := diff(desiredUsers, observedUsers)
+	uGrant, uRevoke := internal.StringSetDiff(desiredUsers, observedUsers)
 	for _, user := range uRevoke {
 		q := fmt.Sprintf("REVOKE GROUP %s FROM %s", mysql.QuoteValue(grp), mysql.QuoteValue(user))
 		if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: q, ErrorValue: errRemoveMember}); err != nil {
@@ -296,37 +295,4 @@ func (c *external) observedUsers(ctx context.Context, grp string) (map[string]st
 		out[bareUsername(string(cells[0]))] = struct{}{}
 	}
 	return out, rows.Err()
-}
-
-func set(items []string) map[string]struct{} {
-	out := make(map[string]struct{}, len(items))
-	for _, i := range items {
-		out[i] = struct{}{}
-	}
-	return out
-}
-
-func diff(desired, observed map[string]struct{}) (toAdd, toRemove []string) {
-	for k := range desired {
-		if _, ok := observed[k]; !ok {
-			toAdd = append(toAdd, k)
-		}
-	}
-	for k := range observed {
-		if _, ok := desired[k]; !ok {
-			toRemove = append(toRemove, k)
-		}
-	}
-	sort.Strings(toAdd)
-	sort.Strings(toRemove)
-	return toAdd, toRemove
-}
-
-func sortedKeys(m map[string]struct{}) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }

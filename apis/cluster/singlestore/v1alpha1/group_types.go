@@ -22,55 +22,37 @@ import (
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
 )
 
-// A GroupSpec defines the desired state of a Group.
-type GroupSpec struct {
+// An RBACGroupSpec defines the desired state of an RBACGroup.
+type RBACGroupSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       GroupParameters `json:"forProvider"`
+	ForProvider       RBACGroupParameters `json:"forProvider"`
 }
 
-// GroupParameters define the desired state of a SingleStore group. A group is
-// the join point of SingleStore RBAC: roles are granted to groups
+// RBACGroupParameters define the desired state of a SingleStore RBAC group. A
+// group is the join point of SingleStore RBAC: roles are granted to groups
 // (GRANT ROLE ... TO <group>) and users are made members of groups
 // (GRANT GROUP <group> TO <user>). Users get the union of the privileges of the
 // roles attached to the groups they belong to.
-type GroupParameters struct {
-	// Roles attached to this group (by role name). Reconciled via
-	// GRANT ROLE / REVOKE ROLE ... TO/FROM the group.
+type RBACGroupParameters struct {
+	// Roles attached to this group, by role name (the Role's external name).
+	// Reconciled via GRANT ROLE / REVOKE ROLE ... TO/FROM the group.
 	// +optional
-	// +crossplane:generate:reference:type=Role
 	Roles []string `json:"roles,omitempty"`
 
-	// RolesRefs resolves Roles to attach to this group.
-	// +optional
-	RolesRefs []xpv1.Reference `json:"rolesRefs,omitempty"`
-
-	// RolesSelector selects Roles to attach to this group.
-	// +optional
-	RolesSelector *xpv1.Selector `json:"rolesSelector,omitempty"`
-
-	// Users that are members of this group (by user name, without @host).
+	// Users that are members of this group, by user name (without @host).
 	// Reconciled via GRANT GROUP / REVOKE GROUP ... TO/FROM each user.
 	// +optional
-	// +crossplane:generate:reference:type=User
 	Users []string `json:"users,omitempty"`
-
-	// UsersRefs resolves Users to add as members of this group.
-	// +optional
-	UsersRefs []xpv1.Reference `json:"usersRefs,omitempty"`
-
-	// UsersSelector selects Users to add as members of this group.
-	// +optional
-	UsersSelector *xpv1.Selector `json:"usersSelector,omitempty"`
 }
 
-// A GroupStatus represents the observed state of a Group.
-type GroupStatus struct {
+// An RBACGroupStatus represents the observed state of an RBACGroup.
+type RBACGroupStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          GroupObservation `json:"atProvider,omitempty"`
+	AtProvider          RBACGroupObservation `json:"atProvider,omitempty"`
 }
 
-// A GroupObservation represents the observed state of a SingleStore group.
-type GroupObservation struct {
+// An RBACGroupObservation represents the observed state of a SingleStore group.
+type RBACGroupObservation struct {
 	// Roles currently attached to the group.
 	Roles []string `json:"roles,omitempty"`
 	// Users currently members of the group.
@@ -79,25 +61,28 @@ type GroupObservation struct {
 
 // +kubebuilder:object:root=true
 
-// A Group represents the declarative state of a SingleStore group.
+// An RBACGroup represents the declarative state of a SingleStore RBAC group
+// (the join point where roles attach and users become members). Named RBACGroup
+// (not Group) because "group" is overloaded; this is specifically a SingleStore
+// privilege group.
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,sql}
-type Group struct {
+type RBACGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   GroupSpec   `json:"spec"`
-	Status GroupStatus `json:"status,omitempty"`
+	Spec   RBACGroupSpec   `json:"spec"`
+	Status RBACGroupStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// GroupList contains a list of Group
-type GroupList struct {
+// RBACGroupList contains a list of RBACGroup
+type RBACGroupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Group `json:"items"`
+	Items           []RBACGroup `json:"items"`
 }

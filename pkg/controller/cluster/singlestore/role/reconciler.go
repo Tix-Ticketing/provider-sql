@@ -19,7 +19,6 @@ package role
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
@@ -40,6 +39,7 @@ import (
 
 	"github.com/crossplane-contrib/provider-sql/apis/cluster/singlestore/v1alpha1"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/mysql"
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/internal"
 
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/xsql"
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/tls"
@@ -159,7 +159,7 @@ func (c *external) Create(ctx context.Context, mg *v1alpha1.Role) (managed.Exter
 		return managed.ExternalCreation{}, err
 	}
 	for scope, privs := range desiredPrivileges(mg.Spec.ForProvider.Privileges) {
-		if err := c.grant(ctx, role, scope, setToSorted(privs)); err != nil {
+		if err := c.grant(ctx, role, scope, internal.SortedKeys(privs)); err != nil {
 			return managed.ExternalCreation{}, err
 		}
 	}
@@ -176,7 +176,7 @@ func (c *external) Update(ctx context.Context, mg *v1alpha1.Role) (managed.Exter
 	desired := desiredPrivileges(mg.Spec.ForProvider.Privileges)
 
 	for scope := range allScopes(desired, observed) {
-		toGrant, toRevoke := diffSet(desired[scope], observed[scope])
+		toGrant, toRevoke := internal.StringSetDiff(desired[scope], observed[scope])
 		if len(toRevoke) > 0 {
 			if err := c.revoke(ctx, role, scope, toRevoke); err != nil {
 				return managed.ExternalUpdate{}, err
@@ -254,13 +254,4 @@ func (c *external) observedPrivileges(ctx context.Context, role string) (privile
 		return nil, false, errors.Wrap(err, errCurrentGrant)
 	}
 	return out, true, nil
-}
-
-func setToSorted(s map[string]struct{}) []string {
-	out := make([]string, 0, len(s))
-	for p := range s {
-		out = append(out, p)
-	}
-	sort.Strings(out)
-	return out
 }

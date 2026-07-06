@@ -22,6 +22,7 @@ import (
 
 	"github.com/crossplane-contrib/provider-sql/apis/cluster/singlestore/v1alpha1"
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/mysql"
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/internal"
 )
 
 // scopeKey identifies a GRANT scope (database.table), using quoted identifiers
@@ -87,7 +88,7 @@ func parseRoleGrant(line string) (scopeKey, []string, bool) {
 
 func privilegesEqual(a, b privilegeMap) bool {
 	for scope := range allScopes(a, b) {
-		toGrant, toRevoke := diffSet(a[scope], b[scope])
+		toGrant, toRevoke := internal.StringSetDiff(a[scope], b[scope])
 		if len(toGrant) > 0 || len(toRevoke) > 0 {
 			return false
 		}
@@ -97,19 +98,6 @@ func privilegesEqual(a, b privilegeMap) bool {
 
 // diffSet returns the privileges to grant (in desired, not observed) and to
 // revoke (in observed, not desired).
-func diffSet(desired, observed map[string]struct{}) (toGrant, toRevoke []string) {
-	for p := range desired {
-		if _, ok := observed[p]; !ok {
-			toGrant = append(toGrant, p)
-		}
-	}
-	for p := range observed {
-		if _, ok := desired[p]; !ok {
-			toRevoke = append(toRevoke, p)
-		}
-	}
-	return toGrant, toRevoke
-}
 
 func allScopes(a, b privilegeMap) map[scopeKey]struct{} {
 	out := make(map[scopeKey]struct{}, len(a)+len(b))
