@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -220,8 +219,7 @@ func (c *external) observedPrivileges(ctx context.Context, role string) (privile
 	q := fmt.Sprintf("SHOW GRANTS FOR ROLE %s", mysql.QuoteValue(role))
 	rows, err := c.db.Query(ctx, xsql.Query{String: q})
 	if err != nil {
-		var myErr *mysqldriver.MySQLError
-		if errors.As(err, &myErr) && myErr.Number == errCodeRoleDoesNotExist {
+		if mysql.IsErrorCode(err, errCodeRoleDoesNotExist) {
 			return nil, false, nil
 		}
 		return nil, false, errors.Wrap(err, errCurrentGrant)
@@ -248,7 +246,14 @@ func (c *external) observedPrivileges(ctx context.Context, role string) (privile
 			out[scope][p] = struct{}{}
 		}
 	}
-	return out, true, rows.Err()
+	// A missing role (1919) can surface here rather than at Query() time.
+	if err := rows.Err(); err != nil {
+		if mysql.IsErrorCode(err, errCodeRoleDoesNotExist) {
+			return nil, false, nil
+		}
+		return nil, false, errors.Wrap(err, errCurrentGrant)
+	}
+	return out, true, nil
 }
 
 func setToSorted(s map[string]struct{}) []string {

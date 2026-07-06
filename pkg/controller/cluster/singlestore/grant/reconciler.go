@@ -52,6 +52,7 @@ const (
 	errGetSecret    = "cannot get credentials Secret"
 	errTLSConfig    = "cannot load TLS config"
 
+	errNoUser       = "grant has no user (userRef unresolved?)"
 	errCreateGrant  = "cannot create grant"
 	errRevokeGrant  = "cannot revoke grant"
 	errCurrentGrant = "cannot show current grants"
@@ -74,6 +75,8 @@ var (
 	// after it is captured as a tail and inspected for WITH GRANT OPTION rather
 	// than enumerating every possible suffix order.
 	grantRegex = regexp.MustCompile(`^GRANT (?:TRANSFERABLE )?(.+) ON (\S+)\.(\S+) TO \S+(.*)$`)
+	// FindStringSubmatch returns the full match plus grantRegex's 4 capture groups.
+	grantRegexMatches = 5
 )
 
 // Setup adds a controller that reconciles Grant managed resources.
@@ -158,6 +161,9 @@ type external struct{ db xsql.DB }
 var _ managed.TypedExternalClient[*v1alpha1.Grant] = &external{}
 
 func (c *external) Observe(ctx context.Context, mg *v1alpha1.Grant) (managed.ExternalObservation, error) {
+	if mg.Spec.ForProvider.User == nil {
+		return managed.ExternalObservation{}, errors.New(errNoUser)
+	}
 	username, host := mysql.SplitUserHost(*mg.Spec.ForProvider.User)
 	dbname := defaultIdentifier(mg.Spec.ForProvider.Database)
 	table := defaultIdentifier(mg.Spec.ForProvider.Table)
@@ -224,7 +230,7 @@ func splitGrantPrivileges(s string) []string {
 
 func parseGrant(grant, dbname string, table string) (privileges []string) {
 	matches := grantRegex.FindStringSubmatch(grant)
-	if len(matches) == 5 && matches[2] == dbname && matches[3] == table {
+	if len(matches) == grantRegexMatches && matches[2] == dbname && matches[3] == table {
 		privileges := splitGrantPrivileges(matches[1])
 
 		if strings.Contains(matches[4], "WITH GRANT OPTION") {

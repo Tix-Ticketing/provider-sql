@@ -23,7 +23,6 @@ import (
 	"sort"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -195,7 +194,7 @@ func (c *external) Delete(ctx context.Context, mg *v1alpha1.Group) (managed.Exte
 	mg.SetConditions(xpv1.Deleting())
 	grp := meta.GetExternalName(mg)
 	// DROP GROUP automatically removes its role attachments and memberships.
-	q := fmt.Sprintf("DROP GROUP %s", mysql.QuoteValue(grp))
+	q := fmt.Sprintf("DROP GROUP IF EXISTS %s", mysql.QuoteValue(grp))
 	if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: q, ErrorValue: errDropGroup}); err != nil {
 		return managed.ExternalDelete{}, err
 	}
@@ -243,8 +242,7 @@ func (c *external) observedRoles(ctx context.Context, grp string) (map[string]st
 	q := fmt.Sprintf("SHOW ROLES FOR GROUP %s", mysql.QuoteValue(grp))
 	rows, err := c.db.Query(ctx, xsql.Query{String: q})
 	if err != nil {
-		var myErr *mysqldriver.MySQLError
-		if errors.As(err, &myErr) && myErr.Number == errCodeGroupDoesNotExist {
+		if mysql.IsErrorCode(err, errCodeGroupDoesNotExist) {
 			return nil, false, nil
 		}
 		return nil, false, errors.Wrap(err, errShowRoles)
@@ -259,7 +257,14 @@ func (c *external) observedRoles(ctx context.Context, grp string) (map[string]st
 		}
 		out[role] = struct{}{}
 	}
-	return out, true, rows.Err()
+	// A missing group (1918) can surface here rather than at Query() time.
+	if err := rows.Err(); err != nil {
+		if mysql.IsErrorCode(err, errCodeGroupDoesNotExist) {
+			return nil, false, nil
+		}
+		return nil, false, errors.Wrap(err, errShowRoles)
+	}
+	return out, true, nil
 }
 
 // observedUsers returns the bare usernames that are members of the group.

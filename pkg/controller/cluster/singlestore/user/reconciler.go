@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
-	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -150,14 +149,23 @@ func (c *external) userExists(ctx context.Context, username, host string) (bool,
 	query := fmt.Sprintf("SHOW GRANTS FOR %s@%s", mysql.QuoteValue(username), mysql.QuoteValue(host))
 	rows, err := c.db.Query(ctx, xsql.Query{String: query})
 	if err != nil {
-		var myErr *mysqldriver.MySQLError
-		if errors.As(err, &myErr) && myErr.Number == errCodeNoSuchGrant {
+		if mysql.IsErrorCode(err, errCodeNoSuchGrant) {
 			return false, nil
 		}
 		return false, errors.Wrap(err, errObserveUser)
 	}
 	defer rows.Close() //nolint:errcheck
-	return true, rows.Err()
+	// SingleStore may deliver the "no such grant" error (1141) mid-resultset, so
+	// drain and check rows.Err() as well as the Query() error above.
+	for rows.Next() { //nolint:revive // draining to surface a deferred server error
+	}
+	if err := rows.Err(); err != nil {
+		if mysql.IsErrorCode(err, errCodeNoSuchGrant) {
+			return false, nil
+		}
+		return false, errors.Wrap(err, errObserveUser)
+	}
+	return true, nil
 }
 
 func (c *external) Observe(ctx context.Context, mg *v1alpha1.User) (managed.ExternalObservation, error) {

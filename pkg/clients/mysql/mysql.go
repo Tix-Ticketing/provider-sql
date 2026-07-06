@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/crossplane-contrib/provider-sql/pkg/clients/xsql"
+	mysqldriver "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
@@ -122,6 +123,15 @@ func (c mySQLDB) GetServerVersion(ctx context.Context) (int, error) {
 	// This method should never be called for MySQL clients
 	// but is implemented to satisfy the xsql.DB interface
 	return 0, nil
+}
+
+// IsErrorCode reports whether err (or any error it wraps) is a MySQL server
+// error with the given code. SingleStore returns "does not exist" codes
+// (1141 user, 1918 group, 1919 role) either from Query() or during row
+// iteration (rows.Err()), so callers must check both sites.
+func IsErrorCode(err error, code uint16) bool {
+	var myErr *mysqldriver.MySQLError
+	return errors.As(err, &myErr) && myErr.Number == code
 }
 
 // QuoteIdentifier for MySQL queries
