@@ -1,0 +1,20 @@
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: Table
+metadata:
+  name: fo-allocationtype
+  annotations:
+    crossplane.io/external-name: allocationtype
+spec:
+  deletionPolicy: Orphan
+  providerConfigRef:
+    name: sql-singlestore-prod-euw
+  forProvider:
+    database: tickets_prod_fo
+    schemaGeneration: "sha256:REPLACE"
+    createStatement: |
+      CREATE ROWSTORE REFERENCE TABLE `tickets_prod_fo`.`allocationtype` (
+        `allocationtypeid` int(11) NOT NULL,
+        `name` varchar(255) DEFAULT NULL,
+        `flowstamp` datetime(6) NOT NULL,
+        PRIMARY KEY (`allocationtypeid`)
+      )

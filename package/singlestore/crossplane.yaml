@@ -4,13 +4,13 @@ metadata:
   name: provider-singlestore
   annotations:
     descriptionShort: |
-      Crossplane provider for SingleStore users, grants and JWT auth.
+      Crossplane provider for SingleStore users, grants, RBAC and tables.
     meta.crossplane.io/maintainer: Tixly SRE <sre@tixly.com>
     meta.crossplane.io/source: github.com/Tix-Ticketing/provider-sql
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       A trimmed build of provider-sql that ships ONLY the
-      singlestore.sql.crossplane.io API group (ProviderConfig, User, Grant).
+      singlestore.sql.crossplane.io API group (ProviderConfig, User, Grant, Role, RBACGroup, Table).
       It runs alongside the upstream crossplane-contrib/provider-sql (which keeps
       ownership of the mysql/postgresql/mssql groups) without any CRD overlap.
       The controller binary is the same image; it is started with
@@ -26,3 +26,6 @@ metadata:
     friendly-group-name.meta.crossplane.io/singlestore.sql.crossplane.io: SingleStore
     friendly-kind-name.meta.crossplane.io/user.singlestore.sql.crossplane.io: User
     friendly-kind-name.meta.crossplane.io/grant.singlestore.sql.crossplane.io: Grant
+    friendly-kind-name.meta.crossplane.io/table.singlestore.sql.crossplane.io: Table
+    friendly-kind-name.meta.crossplane.io/role.singlestore.sql.crossplane.io: Role
+    friendly-kind-name.meta.crossplane.io/rbacgroup.singlestore.sql.crossplane.io: RBACGroup

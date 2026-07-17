@@ -1,7 +1,7 @@
 # SingleStore flavour — development & packaging
 
 This fork adds a `singlestore.sql.crossplane.io` API group (ProviderConfig, User,
-Grant) on top of the upstream `crossplane-contrib/provider-sql`. SingleStore
+Grant, Role, RBACGroup, Table) on top of the upstream `crossplane-contrib/provider-sql`. SingleStore
 speaks the MySQL wire protocol, so the MySQL client is reused; the separate API
 group lets the SingleStore build run **in parallel** with the upstream provider.
 
@@ -62,7 +62,7 @@ An unknown flavour is a hard startup error (no silent no-op).
 ## Building the singlestore-only package
 
 The full provider generates every group's CRD into `package/crds`. The
-singlestore-only package ships **only** the four `singlestore.sql.crossplane.io`
+singlestore-only package ships **only** the seven `singlestore.sql.crossplane.io`
 CRDs so it can be installed next to upstream `provider-sql` with no CRD overlap.
 
 ```bash
@@ -86,3 +86,39 @@ Install it with a `Provider` package CR and a `DeploymentRuntimeConfig` that set
 
 `package/singlestore/crds/` is generated and git-ignored; only
 `package/singlestore/crossplane.yaml` is committed.
+
+## Table controller: SQL forms and lifecycle
+
+The `Table` kind treats `createStatement` as opaque DDL: the controller runs it
+verbatim and never parses or diffs the live schema. Drift is detected solely via
+`schemaGeneration`, which the controller tracks in a per-database marker table
+(`cdc_table_state`) alongside the data table itself.
+
+| Action | Statement |
+|---|---|
+| Existence check (Observe) | `SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ?` |
+| Marker read (Observe) | `SELECT schema_generation FROM <db>.cdc_table_state WHERE target_name = ?` |
+| Ensure marker table (Create/adopt/recreate) | `CREATE ROWSTORE REFERENCE TABLE IF NOT EXISTS <db>.cdc_table_state (target_name VARCHAR(255) NOT NULL PRIMARY KEY, schema_generation VARCHAR(80) NOT NULL, ready_at DATETIME NOT NULL)` |
+| Marker upsert | `REPLACE INTO <db>.cdc_table_state VALUES ('<target_name>', '<schemaGeneration>', NOW())` |
+| Create | runs the MR's `createStatement` verbatim |
+| Recreate (Update, stale marker) | `DROP TABLE IF EXISTS <db>.<table>`, then re-run `createStatement`, then ensure-marker + upsert |
+| Adopt (Update, no marker) | ensure-marker + upsert only - no DROP/CREATE of the data table |
+| Delete | `DROP TABLE IF EXISTS <db>.<table>`, then `DELETE FROM <db>.cdc_table_state WHERE target_name = '<name>'` |
+
+Implementation notes:
+- The marker read tolerates server error `1146` (unknown table) as "no marker
+  yet" - the `cdc_table_state` marker table may simply not have been created in
+  that database yet.
+- `createStatement` is produced upstream by SP2 (the generator), which already
+  emits the correct storage keyword for the target table. The controller accepts
+  all three forms unmodified: plain columnstore (`CREATE TABLE ...`, no
+  keyword), rowstore (`CREATE ROWSTORE TABLE ...`), and reference
+  (`CREATE ROWSTORE REFERENCE TABLE ...`).
+- Recreate only fires when the marker's `schema_generation` differs from the
+  MR's `schemaGeneration`; adopt (no marker row at all) never drops or recreates
+  the data table, it only writes the marker so future generations can be
+  compared.
+- Delete tolerates two server error codes: `1146` (unknown table - the marker
+  was never created, e.g. the table was never adopted) and `1049` (unknown
+  database - the parent database was already dropped out from under the
+  table).
