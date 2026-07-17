@@ -25,6 +25,7 @@ import (
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/grant"
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/group"
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/role"
+	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/table"
 	"github.com/crossplane-contrib/provider-sql/pkg/controller/cluster/singlestore/user"
 )
 
@@ -37,6 +38,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		grant.Setup,
 		role.Setup,
 		group.Setup,
+		table.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
