@@ -119,6 +119,12 @@ Implementation notes:
   MR's `schemaGeneration`; adopt (no marker row at all) never drops or recreates
   the data table, it only writes the marker so future generations can be
   compared.
+- The `cdc_table_state` marker table is owned by the controller; do not drop it
+  manually. Because a missing marker reads the same as "no marker row", dropping
+  it while a `schemaGeneration` change is pending makes the next Update adopt
+  (write the new marker, no DDL) instead of recreating, silently masking the
+  drift until the generation changes again. Data is never lost, but the table
+  keeps its old schema.
 - Delete tolerates two server error codes: `1146` (unknown table - the marker
   was never created, e.g. the table was never adopted) and `1049` (unknown
   database - the parent database was already dropped out from under the
