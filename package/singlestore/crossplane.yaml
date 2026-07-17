@@ -10,7 +10,8 @@ metadata:
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       A trimmed build of provider-sql that ships ONLY the
-      singlestore.sql.crossplane.io API group (ProviderConfig, User, Grant, Role, RBACGroup, Table).
+      singlestore.sql.crossplane.io API group (ProviderConfig, User, Grant, Role,
+      RBACGroup, Table).
       It runs alongside the upstream crossplane-contrib/provider-sql (which keeps
       ownership of the mysql/postgresql/mssql groups) without any CRD overlap.
       The controller binary is the same image; it is started with

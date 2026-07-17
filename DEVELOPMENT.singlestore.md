@@ -1,9 +1,10 @@
 # SingleStore flavour — development & packaging
 
 This fork adds a `singlestore.sql.crossplane.io` API group (ProviderConfig, User,
-Grant, Role, RBACGroup, Table) on top of the upstream `crossplane-contrib/provider-sql`. SingleStore
-speaks the MySQL wire protocol, so the MySQL client is reused; the separate API
-group lets the SingleStore build run **in parallel** with the upstream provider.
+Grant, Role, RBACGroup, Table) on top of the upstream
+`crossplane-contrib/provider-sql`. SingleStore speaks the MySQL wire protocol, so
+the MySQL client is reused; the separate API group lets the SingleStore build run
+**in parallel** with the upstream provider.
 
 ## Local SingleStore for testing
 

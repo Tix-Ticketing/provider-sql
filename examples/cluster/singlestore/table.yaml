@@ -1,3 +1,7 @@
+# A Table is a SingleStore table created from a verbatim CREATE statement. The
+# controller treats createStatement as opaque and detects drift only via
+# schemaGeneration (a content hash of createStatement); changing it forces a
+# drop-and-recreate. Replace "sha256:REPLACE" below with the real hash.
 apiVersion: singlestore.sql.crossplane.io/v1alpha1
 kind: Table
 metadata:
