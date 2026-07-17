@@ -90,6 +90,14 @@ var (
 	RBACGroupGroupVersionKind = SchemeGroupVersion.WithKind(RBACGroupKind)
 )
 
+// Table type metadata.
+var (
+	TableKind             = reflect.TypeOf(Table{}).Name()
+	TableGroupKind        = schema.GroupKind{Group: Group, Kind: TableKind}.String()
+	TableKindAPIVersion   = TableKind + "." + SchemeGroupVersion.String()
+	TableGroupVersionKind = SchemeGroupVersion.WithKind(TableKind)
+)
+
 func init() {
 	SchemeBuilder.Register(&ProviderConfig{}, &ProviderConfigList{})
 	SchemeBuilder.Register(&ProviderConfigUsage{}, &ProviderConfigUsageList{})
@@ -97,4 +105,5 @@ func init() {
 	SchemeBuilder.Register(&Grant{}, &GrantList{})
 	SchemeBuilder.Register(&Role{}, &RoleList{})
 	SchemeBuilder.Register(&RBACGroup{}, &RBACGroupList{})
+	SchemeBuilder.Register(&Table{}, &TableList{})
 }
