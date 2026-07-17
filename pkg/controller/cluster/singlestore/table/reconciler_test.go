@@ -27,12 +27,14 @@ type mockDB struct {
 	MockScan func(ctx context.Context, q xsql.Query, dest ...interface{}) error
 }
 
-func (m mockDB) Exec(ctx context.Context, q xsql.Query) error                     { return m.MockExec(ctx, q) }
-func (m mockDB) ExecTx(ctx context.Context, ql []xsql.Query) error                { return nil }
-func (m mockDB) Scan(ctx context.Context, q xsql.Query, dest ...interface{}) error { return m.MockScan(ctx, q, dest...) }
-func (m mockDB) Query(ctx context.Context, q xsql.Query) (*sql.Rows, error)       { return &sql.Rows{}, nil }
-func (m mockDB) GetConnectionDetails(u, p string) managed.ConnectionDetails       { return nil }
-func (m mockDB) GetServerVersion(ctx context.Context) (int, error)               { return 0, nil }
+func (m mockDB) Exec(ctx context.Context, q xsql.Query) error      { return m.MockExec(ctx, q) }
+func (m mockDB) ExecTx(ctx context.Context, ql []xsql.Query) error { return nil }
+func (m mockDB) Scan(ctx context.Context, q xsql.Query, dest ...interface{}) error {
+	return m.MockScan(ctx, q, dest...)
+}
+func (m mockDB) Query(ctx context.Context, q xsql.Query) (*sql.Rows, error) { return &sql.Rows{}, nil }
+func (m mockDB) GetConnectionDetails(u, p string) managed.ConnectionDetails { return nil }
+func (m mockDB) GetServerVersion(ctx context.Context) (int, error)          { return 0, nil }
 
 func tbl(name, db, create, gen string) *v1alpha1.Table {
 	t := &v1alpha1.Table{}
