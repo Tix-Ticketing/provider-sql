@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
@@ -188,7 +188,7 @@ func (c *external) Observe(ctx context.Context, mg *v1alpha1.User) (managed.Exte
 		}
 	}
 
-	mg.SetConditions(xpv1.Available())
+	mg.SetConditions(xpv2.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -218,7 +218,7 @@ func (c *external) identifiedClause(ctx context.Context, mg *v1alpha1.User) (cla
 }
 
 func (c *external) Create(ctx context.Context, mg *v1alpha1.User) (managed.ExternalCreation, error) {
-	mg.SetConditions(xpv1.Creating())
+	mg.SetConditions(xpv2.Creating())
 
 	username, host := mysql.SplitUserHost(meta.GetExternalName(mg))
 
@@ -277,7 +277,7 @@ func (c *external) Update(ctx context.Context, mg *v1alpha1.User) (managed.Exter
 }
 
 func (c *external) Delete(ctx context.Context, mg *v1alpha1.User) (managed.ExternalDelete, error) {
-	mg.SetConditions(xpv1.Deleting())
+	mg.SetConditions(xpv2.Deleting())
 
 	username, host := mysql.SplitUserHost(meta.GetExternalName(mg))
 

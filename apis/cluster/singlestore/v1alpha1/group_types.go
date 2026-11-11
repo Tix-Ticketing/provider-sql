@@ -19,12 +19,12 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // An RBACGroupSpec defines the desired state of an RBACGroup.
 type RBACGroupSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ClusterManagedResourceSpec `json:",inline"`
 	ForProvider       RBACGroupParameters `json:"forProvider"`
 }
 
@@ -47,7 +47,7 @@ type RBACGroupParameters struct {
 
 // An RBACGroupStatus represents the observed state of an RBACGroup.
 type RBACGroupStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 	AtProvider          RBACGroupObservation `json:"atProvider,omitempty"`
 }
 

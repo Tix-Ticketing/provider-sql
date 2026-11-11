@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 )
 
 // AuthPlugin selects how a SingleStore user authenticates.
@@ -43,13 +43,13 @@ const (
 
 // A UserSpec defines the desired state of a User.
 type UserSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ClusterManagedResourceSpec `json:",inline"`
 	ForProvider       UserParameters `json:"forProvider"`
 }
 
 // A UserStatus represents the observed state of a User.
 type UserStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 	AtProvider          UserObservation `json:"atProvider,omitempty"`
 }
 
@@ -69,7 +69,7 @@ type UserParameters struct {
 	// for this user. Only used when AuthPlugin is "password". If no reference
 	// is given for a password user, a password will be auto-generated.
 	// +optional
-	PasswordSecretRef *xpv1.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// RequireSSL forces this user to connect over SSL/TLS (REQUIRE SSL).
 	// JWT users always get REQUIRE SSL (it is mandatory) regardless of this

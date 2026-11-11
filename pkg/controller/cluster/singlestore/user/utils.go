@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 
 	"github.com/crossplane-contrib/provider-sql/apis/cluster/singlestore/v1alpha1"
@@ -60,7 +60,7 @@ func (c *external) getPassword(ctx context.Context, user *v1alpha1.User) (newPwd
 	}
 	// if newPwd was set to some value, compare value in output secret with
 	// newPwd
-	changed = newPwd != "" && newPwd != string(s.Data[xpv1.ResourceCredentialsSecretPasswordKey])
+	changed = newPwd != "" && newPwd != string(s.Data[xpv2.CredentialsSecretPasswordKey])
 
 	return newPwd, changed, nil
 }

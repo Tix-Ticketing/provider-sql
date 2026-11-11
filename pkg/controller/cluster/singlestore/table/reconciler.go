@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	xpcontroller "github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
@@ -164,7 +164,7 @@ func (c *external) Observe(ctx context.Context, mg *v1alpha1.Table) (managed.Ext
 	mg.Status.AtProvider.AppliedGeneration = applied
 	upToDate := applied != "" && applied == mg.Spec.ForProvider.SchemaGeneration
 	mg.Status.AtProvider.Ready = upToDate
-	mg.SetConditions(xpv1.Available())
+	mg.SetConditions(xpv2.Available())
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: upToDate}, nil
 }
 
@@ -200,7 +200,7 @@ func (c *external) writeMarker(ctx context.Context, db, name, generation string)
 }
 
 func (c *external) Create(ctx context.Context, mg *v1alpha1.Table) (managed.ExternalCreation, error) {
-	mg.SetConditions(xpv1.Creating())
+	mg.SetConditions(xpv2.Creating())
 	if err := mysql.ExecWrapper(ctx, c.db, mysql.ExecQuery{Query: mg.Spec.ForProvider.CreateStatement, ErrorValue: errCreateTable}); err != nil {
 		return managed.ExternalCreation{}, err
 	}
@@ -239,7 +239,7 @@ func (c *external) Update(ctx context.Context, mg *v1alpha1.Table) (managed.Exte
 }
 
 func (c *external) Delete(ctx context.Context, mg *v1alpha1.Table) (managed.ExternalDelete, error) {
-	mg.SetConditions(xpv1.Deleting())
+	mg.SetConditions(xpv2.Deleting())
 	db := mg.Spec.ForProvider.Database
 	name := meta.GetExternalName(mg)
 
