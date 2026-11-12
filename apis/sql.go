@@ -23,6 +23,7 @@ import (
 	clustermssql "github.com/crossplane-contrib/provider-sql/apis/cluster/mssql/v1alpha1"
 	clustermysql "github.com/crossplane-contrib/provider-sql/apis/cluster/mysql/v1alpha1"
 	clusterpostgresql "github.com/crossplane-contrib/provider-sql/apis/cluster/postgresql/v1alpha1"
+	clustersinglestore "github.com/crossplane-contrib/provider-sql/apis/cluster/singlestore/v1alpha1"
 	namespacedmssql "github.com/crossplane-contrib/provider-sql/apis/namespaced/mssql/v1alpha1"
 	namespacedmysql "github.com/crossplane-contrib/provider-sql/apis/namespaced/mysql/v1alpha1"
 	namespacedpostgresql "github.com/crossplane-contrib/provider-sql/apis/namespaced/postgresql/v1alpha1"
@@ -34,6 +35,7 @@ func init() {
 		clustermssql.SchemeBuilder.AddToScheme,
 		clustermysql.SchemeBuilder.AddToScheme,
 		clusterpostgresql.SchemeBuilder.AddToScheme,
+		clustersinglestore.SchemeBuilder.AddToScheme,
 		namespacedmssql.SchemeBuilder.AddToScheme,
 		namespacedmysql.SchemeBuilder.AddToScheme,
 		namespacedpostgresql.SchemeBuilder.AddToScheme,
