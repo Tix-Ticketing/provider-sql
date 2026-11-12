@@ -103,6 +103,7 @@ type GrantObservation struct {
 // +kubebuilder:printcolumn:name="ROLE",type="string",JSONPath=".spec.forProvider.user"
 // +kubebuilder:printcolumn:name="DATABASE",type="string",JSONPath=".spec.forProvider.database"
 // +kubebuilder:printcolumn:name="PRIVILEGES",type="string",JSONPath=".spec.forProvider.privileges"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,sql}
 type Grant struct {
 	metav1.TypeMeta   `json:",inline"`

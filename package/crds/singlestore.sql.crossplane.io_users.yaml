@@ -118,6 +118,9 @@ spec:
                       field. For password users it is optional and defaults to false.
                     type: boolean
                 type: object
+                x-kubernetes-validations:
+                - message: authPlugin jwt and passwordSecretRef are mutually exclusive
+                  rule: '!(has(self.authPlugin) && self.authPlugin == ''jwt'' && has(self.passwordSecretRef))'
               managementPolicies:
                 default:
                 - '*'

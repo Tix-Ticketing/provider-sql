@@ -16,6 +16,10 @@ upstream `provider-sql` (`FLAVOURS=singlestore`).
 Rulesets: `master` can't be deleted or force-pushed (fast-forward only); `tixly`
 can't be deleted (force-push is allowed for the rebase).
 
+GitHub Actions is disabled on this fork. Upstream's workflows target their own
+registry and secrets. Builds run in the hub's Argo Workflows (below), and tests run
+locally before pushing.
+
 ## Sync with upstream
 
 On each upstream release, or before bumping `provider-singlestore`:
@@ -44,8 +48,28 @@ Keep our work small and in our own paths (`apis/cluster/singlestore`,
 rebases rarely conflict. Shared upstream files we touch today: `cmd/provider/main.go`,
 `pkg/controller/sql.go`, `apis/sql.go`, `pkg/clients/mysql/mysql.go`, `.gitignore`.
 
-When upstream changes shared types (e.g. v0.16 moved `crossplane-runtime/apis/common/v1`
-to `crossplane/apis/v2/core/v2`), port our code in a separate commit on `tixly`.
+### After each rebase: keep the SingleStore flavour aligned with upstream
+
+The SingleStore code is modelled on upstream's MySQL flavour. Check what upstream changed
+and mirror it, in a separate commit on `tixly`:
+
+```bash
+git log --oneline <old-master>..origin/master -- \
+  pkg/controller/cluster/mysql apis/cluster/mysql pkg/clients cmd go.mod
+```
+
+- **Shared types and APIs:** e.g. v0.16 moved `crossplane-runtime/apis/common/v1` to
+  `crossplane/apis/v2/core/v2` and `register.go` to `runtime.NewSchemeBuilder`.
+  Follow it, then `go generate`.
+- **Controller `Setup`:** management policies, state metrics, reference resolvers
+  and options should match `pkg/controller/cluster/mysql/*/reconciler.go`.
+- **API markers:** printcolumns and CEL validations on `apis/cluster/mysql` have SingleStore
+  equivalents (e.g. plugin/password mutual exclusivity).
+- **Docker base image:** copy the distroless digest from `cluster/images/provider-sql/Dockerfile`
+  into `cluster/images/provider-singlestore/Dockerfile`. Upstream's dependabot only
+  bumps theirs.
+- **CRD changes:** if a new CEL rule or required field is added, check that live objects on the hub
+  still pass (`kubectl get users.singlestore.sql.crossplane.io -o json`) before rolling out.
 
 ## Build and release
 

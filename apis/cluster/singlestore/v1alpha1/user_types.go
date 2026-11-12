@@ -54,6 +54,7 @@ type UserStatus struct {
 }
 
 // UserParameters define the desired state of a SingleStore user instance.
+// +kubebuilder:validation:XValidation:rule="!(has(self.authPlugin) && self.authPlugin == 'jwt' && has(self.passwordSecretRef))",message="authPlugin jwt and passwordSecretRef are mutually exclusive"
 type UserParameters struct {
 	// AuthPlugin selects how the user authenticates. "password" (default)
 	// creates the user with IDENTIFIED BY a password. "jwt" creates the user
