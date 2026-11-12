@@ -1,0 +1,13 @@
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: example-grant
+spec:
+  forProvider:
+    privileges:
+      - SELECT
+      - INSERT
+      - UPDATE
+    userRef:
+      name: example-password-user
+    database: warehouse_euw_acme

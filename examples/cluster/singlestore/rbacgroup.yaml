@@ -1,0 +1,19 @@
+# An RBACGroup is the join point of SingleStore RBAC: roles are granted to the
+# group and users are made members. Members inherit the union of the attached
+# roles' privileges. Granting a role directly to a user is rejected by
+# SingleStore — roles attach to groups.
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: RBACGroup
+metadata:
+  name: grp-ruleengine
+  annotations:
+    crossplane.io/external-name: grp_ruleengine
+spec:
+  forProvider:
+    # By name (the Role's / User's external name).
+    roles:
+      - app_ruleengine_ro
+    users:
+      - svc-analytics@tixly.com
+  providerConfigRef:
+    name: sql-singlestore-prod-euw

@@ -1,0 +1,16 @@
+apiVersion: singlestore.sql.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: example-jwt-user
+  annotations:
+    # The external name must match the JWT subject (the user logs in with a
+    # signed JWT whose sub/email claim equals this name).
+    crossplane.io/external-name: "svc-analytics@tixly.com"
+spec:
+  forProvider:
+    # Creates: CREATE USER '<name>'@'%' IDENTIFIED WITH authentication_jwt REQUIRE SSL
+    # No password is stored. The workspace JWKS endpoint validates the token whose
+    # resolved username matches this user name. JWT names may be up to 320 chars.
+    # REQUIRE SSL is mandatory for JWT users and is always emitted (the field below
+    # is redundant for jwt but harmless).
+    authPlugin: jwt
